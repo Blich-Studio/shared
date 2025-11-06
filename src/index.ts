@@ -20,15 +20,6 @@ export interface Game {
   updatedAt: string;
 }
 
-export interface GameWithStats extends Game {
-  stats: {
-    totalPlayers: number;
-    activePlayers: number;
-    averagePlaytime: number;
-    totalSessions: number;
-  };
-}
-
 export interface BlogPost {
   id: number;
   title: string;
@@ -41,12 +32,4 @@ export interface BlogPost {
   publishedAt?: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface LeaderboardEntry {
-  playerId: string;
-  playerName: string;
-  score: number;
-  rank: number;
-  timestamp: string;
 }
