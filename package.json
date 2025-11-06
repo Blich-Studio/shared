@@ -1,0 +1,30 @@
+{
+  "name": "@blich-studio/shared",
+  "version": "1.0.0",
+  "description": "Shared utilities and types for Blich Studio monorepo",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "keywords": [
+    "shared",
+    "utilities",
+    "types",
+    "blich-studio"
+  ],
+  "author": "Blich Studio",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "^5.8.3"
+  },
+  "files": [
+    "dist",
+    "src"
+  ]
+}
