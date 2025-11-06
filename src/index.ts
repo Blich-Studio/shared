@@ -36,5 +36,6 @@ export interface BlogPost {
 
 // Export utilities and types
 export * from './types/article'
+export * from './types/common'
 export * from './utils/logger'
 export * from './utils/logger-examples'
