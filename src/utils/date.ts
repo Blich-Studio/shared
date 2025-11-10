@@ -12,6 +12,14 @@ export const generateId = (): string => {
 }
 
 /**
+ * Gets the current timestamp in epoch milliseconds
+ * @returns Current timestamp in milliseconds since Unix epoch
+ */
+export const getCurrentTimestamp = (): number => {
+  return dayjs().valueOf()
+}
+
+/**
  * Formats a timestamp (epoch milliseconds) to a readable string
  * @param timestamp - Epoch milliseconds
  * @param format - dayjs format string (default: 'YYYY-MM-DD HH:mm:ss')
