@@ -26,5 +26,8 @@
   "files": [
     "dist",
     "src"
-  ]
+  ],
+  "dependencies": {
+    "dayjs": "^1.11.19"
+  }
 }

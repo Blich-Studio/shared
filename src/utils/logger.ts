@@ -401,3 +401,44 @@ export const logger = createLogger({
   environment: process.env.NODE_ENV || 'development',
   level: (process.env.LOG_LEVEL as LogLevel) || LogLevel.INFO,
 })
+
+// Concise logging helpers for common patterns
+export const log = {
+  // Error with minimal context
+  error: (message: string, error?: any, context?: Record<string, any>) => {
+    logger.error(message, error, context)
+  },
+
+  // Validation error
+  validation: (message: string, id?: string) => {
+    logger.error(message, undefined, {
+      event: { action: 'validation', category: 'validation', outcome: 'failure' },
+      labels: id ? { id } : undefined,
+    })
+  },
+
+  // Database operation error
+  db: (operation: string, error: any, id?: string) => {
+    logger.error(`DB ${operation} failed`, error, {
+      event: { action: operation, category: 'database', outcome: 'failure' },
+      labels: id ? { id } : undefined,
+    })
+  },
+
+  // Not found error
+  notFound: (resource: string, id?: string) => {
+    logger.error(`${resource} not found`, undefined, {
+      event: { action: 'find', category: 'not_found', outcome: 'failure' },
+      labels: id ? { id } : undefined,
+    })
+  },
+
+  // Success operation
+  success: (operation: string, id?: string, extra?: Record<string, any>) => {
+    logger.info(`${operation} successful`, {
+      event: { action: operation, category: 'operation', outcome: 'success' },
+      labels: id ? { id } : undefined,
+      ...extra,
+    })
+  },
+}

@@ -11,8 +11,8 @@ export const ArticleSchema = z.object({
   authorId: ObjectIdSchema,
   status: z.enum(['draft', 'published', 'archived']),
   tags: z.array(TagSchema),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
 })
 
 export type Article = z.infer<typeof ArticleSchema>
