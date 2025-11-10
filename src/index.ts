@@ -16,8 +16,8 @@ export interface Game {
     discord?: string
   }
   published: boolean
-  createdAt: string
-  updatedAt: string
+  createdAt: number
+  updatedAt: number
 }
 
 export interface BlogPost {
@@ -30,12 +30,14 @@ export interface BlogPost {
   tags?: string[]
   status: 'draft' | 'published'
   publishedAt?: string
-  createdAt: string
-  updatedAt: string
+  createdAt: number
+  updatedAt: number
 }
 
 // Export utilities and types
 export * from './types/article'
 export * from './types/common'
+export * from './utils/date'
 export * from './utils/logger'
 export * from './utils/logger-examples'
+export * from './utils/mongodb'
