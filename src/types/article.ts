@@ -30,5 +30,34 @@ export const CreateArticleSchema = z.object({
 
 export const UpdateArticleSchema = CreateArticleSchema.partial()
 
+// Query parameter validation schemas
+export const ArticlePaginationSchema = z.object({
+  page: z
+    .string()
+    .optional()
+    .transform(val => (val ? parseInt(val, 10) : undefined)),
+  limit: z
+    .string()
+    .optional()
+    .transform(val => (val ? parseInt(val, 10) : undefined)),
+  sort: z.string().optional(),
+  order: z.enum(['asc', 'desc']).optional().default('desc'),
+})
+
+export const ArticleFiltersSchema = z.object({
+  status: z.enum(['draft', 'published', 'archived']).optional(),
+  authorId: z.string().optional(),
+  tags: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform(val => {
+      if (!val) return undefined
+      return Array.isArray(val) ? val : [val]
+    }),
+  search: z.string().optional(),
+})
+
 export type CreateArticleInput = z.infer<typeof CreateArticleSchema>
 export type UpdateArticleInput = z.infer<typeof UpdateArticleSchema>
+export type ArticlePaginationQuery = z.infer<typeof ArticlePaginationSchema>
+export type ArticleFiltersQuery = z.infer<typeof ArticleFiltersSchema>

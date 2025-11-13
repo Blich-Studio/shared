@@ -43,3 +43,33 @@ export interface ApiErrorResponse {
   message?: string
   details?: Record<string, unknown>
 }
+
+// Pagination types
+export interface PaginationQuery {
+  page?: number
+  limit?: number
+  sort?: string
+  order?: 'asc' | 'desc'
+}
+
+export interface PaginationMeta {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  hasNext: boolean
+  hasPrev: boolean
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  pagination: PaginationMeta
+}
+
+// Filtering types
+export interface ArticleFilters {
+  status?: 'draft' | 'published' | 'archived'
+  authorId?: string
+  tags?: string[]
+  search?: string
+}
