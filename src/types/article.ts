@@ -59,7 +59,10 @@ export const ArticleFiltersSchema = z.object({
     .transform(val => {
       if (!val) return undefined
       if (Array.isArray(val)) return val
-      return val.split(',').map(s => s.trim())
+      return val
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
     }),
   search: z.string().optional(),
 })
