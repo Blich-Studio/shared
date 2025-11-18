@@ -35,17 +35,17 @@ export const ArticlePaginationSchema = z.object({
   page: z
     .string()
     .optional()
-    .transform(val => (val ? parseInt(val, 10) : undefined))
-    .refine(val => val === undefined || !isNaN(val), {
+    .refine(val => !val || /^\d+$/.test(val), {
       message: 'Invalid page number',
-    }),
+    })
+    .transform(val => (val ? parseInt(val, 10) : undefined)),
   limit: z
     .string()
     .optional()
-    .transform(val => (val ? parseInt(val, 10) : undefined))
-    .refine(val => val === undefined || !isNaN(val), {
+    .refine(val => !val || /^\d+$/.test(val), {
       message: 'Invalid limit number',
-    }),
+    })
+    .transform(val => (val ? parseInt(val, 10) : undefined)),
   sort: z.string().optional(),
   order: z.enum(['asc', 'desc']).optional().default('desc'),
 })
