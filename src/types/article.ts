@@ -32,14 +32,18 @@ export const UpdateArticleSchema = CreateArticleSchema.partial()
 
 // Query parameter validation schemas
 export const ArticlePaginationSchema = z.object({
-  page: z
-    .string()
-    .optional()
-    .transform(val => (val ? parseInt(val, 10) : undefined)),
-  limit: z
-    .string()
-    .optional()
-    .transform(val => (val ? parseInt(val, 10) : undefined)),
+  page: z.preprocess(val => {
+    if (!val || typeof val !== 'string') return undefined
+    const parsed = parseInt(val, 10)
+    if (isNaN(parsed)) throw new Error('Invalid page number')
+    return parsed
+  }, z.number().optional()),
+  limit: z.preprocess(val => {
+    if (!val || typeof val !== 'string') return undefined
+    const parsed = parseInt(val, 10)
+    if (isNaN(parsed)) throw new Error('Invalid limit number')
+    return parsed
+  }, z.number().optional()),
   sort: z.string().optional(),
   order: z.enum(['asc', 'desc']).optional().default('desc'),
 })
@@ -52,7 +56,11 @@ export const ArticleFiltersSchema = z.object({
     .optional()
     .transform(val => {
       if (!val) return undefined
-      return Array.isArray(val) ? val : [val]
+      if (Array.isArray(val)) return val
+      return val
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
     }),
   search: z.string().optional(),
 })
