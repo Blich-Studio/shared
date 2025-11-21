@@ -25,7 +25,7 @@ export const getCurrentTimestamp = (): number => {
  * @param format - dayjs format string (default: 'YYYY-MM-DD HH:mm:ss')
  * @returns Formatted date string
  */
-export const formatDate = (timestamp: number, format: string = 'YYYY-MM-DD HH:mm:ss'): string => {
+export const formatDate = (timestamp: number, format = 'YYYY-MM-DD HH:mm:ss'): string => {
   return dayjs(timestamp).format(format)
 }
 

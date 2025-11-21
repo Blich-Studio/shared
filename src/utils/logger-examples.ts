@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * ECS Logger Usage Examples
  *
