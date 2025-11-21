@@ -35,6 +35,7 @@ export interface BlogPost {
 }
 
 // Export utilities and types
+export * from './errors/HttpError'
 export * from './types/article'
 export * from './types/common'
 export * from './utils/date'
