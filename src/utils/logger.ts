@@ -157,16 +157,17 @@ export class ECSLogger {
           }
         },
       },
-      transport: !this.config.enableJSON
-        ? {
-            target: 'pino-pretty',
-            options: {
-              colorize: true,
-              translateTime: 'SYS:standard',
-              ignore: 'pid,hostname,service,log',
-            },
-          }
-        : undefined,
+      transport:
+        this.config.environment === 'development' && !this.config.enableJSON
+          ? {
+              target: 'pino-pretty',
+              options: {
+                colorize: true,
+                translateTime: 'SYS:standard',
+                ignore: 'pid,hostname,service,log',
+              },
+            }
+          : undefined,
     })
   }
 
@@ -339,7 +340,6 @@ export class ECSLogger {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const level = res.statusCode >= 400 ? LogLevel.WARN : LogLevel.INFO
 
-      // Use the appropriate log method based on level
       // Use the appropriate log method based on level
       const logMethod =
         level === LogLevel.WARN ? logger.warn.bind(logger) : logger.info.bind(logger)

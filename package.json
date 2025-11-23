@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . || true",
+    "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
   "keywords": [
