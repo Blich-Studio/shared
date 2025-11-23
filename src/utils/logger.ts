@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto'
+import pino from 'pino'
 
 // ECS (Elastic Common Schema) Log Levels
 export enum LogLevel {
@@ -36,12 +37,12 @@ export interface ECSLogEntry {
       method?: string
       url?: string
       headers?: Record<string, string>
-      body?: any
+      body?: unknown
     }
     response?: {
       status_code?: number
       headers?: Record<string, string>
-      body?: any
+      body?: unknown
     }
   }
 
@@ -89,8 +90,8 @@ export interface ECSLogEntry {
   }
 
   // Custom fields for application-specific data
-  labels?: Record<string, any>
-  meta?: Record<string, any>
+  labels?: Record<string, unknown>
+  meta?: Record<string, unknown>
 }
 
 // Logger Configuration
@@ -104,53 +105,79 @@ export interface LoggerConfig {
   includeStackTrace?: boolean
 }
 
+const inferredEnvironment = process.env.NODE_ENV ?? 'development'
+
 // Default configuration
 const defaultConfig: Required<LoggerConfig> = {
   serviceName: 'unknown-service',
   serviceVersion: '1.0.0',
-  environment: 'development',
+  environment: inferredEnvironment,
   level: LogLevel.INFO,
   enableConsole: true,
-  enableJSON: true,
+  enableJSON: inferredEnvironment !== 'development',
   includeStackTrace: true,
 }
 
-// Log level hierarchy for filtering
-const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
-  [LogLevel.TRACE]: 0,
-  [LogLevel.DEBUG]: 1,
-  [LogLevel.INFO]: 2,
-  [LogLevel.WARN]: 3,
-  [LogLevel.ERROR]: 4,
-  [LogLevel.FATAL]: 5,
+interface ErrorWithCode extends Error {
+  code?: string
 }
 
 /**
- * ECS-compliant Logger class
+ * ECS-compliant Logger class using Pino
  */
 export class ECSLogger {
+  private logger: pino.Logger
   private config: Required<LoggerConfig>
-  private context: Partial<ECSLogEntry> = {}
 
   constructor(config: LoggerConfig) {
     this.config = { ...defaultConfig, ...config }
-    this.initializeContext()
-  }
 
-  private initializeContext(): void {
-    this.context = {
-      service: {
-        name: this.config.serviceName,
-        version: this.config.serviceVersion,
-        environment: this.config.environment,
+    this.logger = pino({
+      level: this.config.level,
+      base: {
+        service: {
+          name: this.config.serviceName,
+          version: this.config.serviceVersion,
+          environment: this.config.environment,
+        },
+        host: {
+          hostname: typeof process !== 'undefined' ? process.env.HOSTNAME : undefined,
+        },
+        process: {
+          pid: typeof process !== 'undefined' ? process.pid : undefined,
+        },
       },
-      host: {
-        hostname: process.env.HOSTNAME || 'unknown-host',
+      timestamp: pino.stdTimeFunctions.isoTime,
+      formatters: {
+        level: label => {
+          return { log: { level: label as LogLevel } }
+        },
+        bindings: (bindings: pino.Bindings) => {
+          const processInfo =
+            typeof bindings.pid === 'number' ? { process: { pid: bindings.pid } } : {}
+
+          const hostInfo =
+            typeof bindings.hostname === 'string' ? { host: { hostname: bindings.hostname } } : {}
+
+          return {
+            ...processInfo,
+            ...hostInfo,
+          }
+        },
       },
-      process: {
-        pid: process.pid,
-      },
-    }
+      // Pretty transport stays dev-only to avoid main-thread overhead in production
+      transport:
+        this.config.environment === 'development' && !this.config.enableJSON
+          ? {
+              target: 'pino-pretty',
+              options: {
+                colorize: true,
+                translateTime: 'SYS:standard',
+                ignore: 'pid,hostname,service,log',
+              },
+            }
+          : undefined,
+    })
   }
 
   /**
@@ -158,14 +185,26 @@ export class ECSLogger {
    */
   child(context: Partial<ECSLogEntry>): ECSLogger {
     const childLogger = new ECSLogger(this.config)
-    childLogger.context = { ...this.context, ...context }
+    childLogger.logger = this.logger.child(context)
     return childLogger
   }
 
   /**
    * Set request context for HTTP logging
    */
-  setRequestContext(req: any): ECSLogger {
+  setRequestContext(req: {
+    method: string
+    url: string
+    headers: Record<string, unknown>
+    originalUrl?: string
+    path: string
+    query?: Record<string, string | string[]>
+    user?: { id: string; name: string; email: string }
+    id?: string
+    get: (header: string) => string | undefined
+    ip?: string
+    connection?: { remoteAddress?: string }
+  }): ECSLogger {
     const requestContext: Partial<ECSLogEntry> = {
       http: {
         request: {
@@ -175,9 +214,9 @@ export class ECSLogger {
         },
       },
       url: {
-        original: req.originalUrl || req.url,
+        original: req.originalUrl ?? req.url,
         path: req.path,
-        query: req.query ? new URLSearchParams(req.query).toString() : undefined,
+        query: this.serializeQueryParams(req.query),
       },
       user: req.user
         ? {
@@ -187,16 +226,16 @@ export class ECSLogger {
           }
         : undefined,
       labels: {
-        requestId: req.id || randomUUID(),
+        requestId: req.id ?? randomUUID(),
         userAgent: req.get('User-Agent'),
-        ip: req.ip || req.connection?.remoteAddress,
+        ip: req.ip ?? req.connection?.remoteAddress,
       },
     }
 
     return this.child(requestContext)
   }
 
-  private sanitizeHeaders(headers: Record<string, any>): Record<string, string> {
+  private sanitizeHeaders(headers: Record<string, unknown>): Record<string, string> {
     const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key', 'x-auth-token']
     const sanitized: Record<string, string> = {}
 
@@ -211,88 +250,53 @@ export class ECSLogger {
     return sanitized
   }
 
-  private shouldLog(level: LogLevel): boolean {
-    return LOG_LEVEL_PRIORITY[level] >= LOG_LEVEL_PRIORITY[this.config.level]
-  }
-
-  private createLogEntry(
-    level: LogLevel,
-    message: string,
-    data?: Partial<ECSLogEntry>
-  ): ECSLogEntry {
-    const entry: ECSLogEntry = {
-      '@timestamp': new Date().toISOString(),
-      log: {
-        level,
-        logger: this.config.serviceName,
-      },
-      message,
-      ...this.context,
-      ...data,
+  private serializeQueryParams(query?: Record<string, string | string[]>): string | undefined {
+    if (!query) {
+      return undefined
     }
 
-    return entry
-  }
+    const params = new URLSearchParams()
 
-  private log(level: LogLevel, message: string, data?: Partial<ECSLogEntry>): void {
-    if (!this.shouldLog(level)) return
-
-    const entry = this.createLogEntry(level, message, data)
-
-    if (this.config.enableConsole) {
-      this.outputToConsole(entry)
-    }
-
-    // Here you could add other outputs like file, remote service, etc.
-    // this.outputToFile(entry);
-    // this.outputToRemote(entry);
-  }
-
-  private outputToConsole(entry: ECSLogEntry): void {
-    if (this.config.enableJSON) {
-      console.log(JSON.stringify(entry, null, this.config.environment === 'development' ? 2 : 0))
-    } else {
-      const levelEmoji = {
-        [LogLevel.TRACE]: '🔍',
-        [LogLevel.DEBUG]: '🐛',
-        [LogLevel.INFO]: 'ℹ️',
-        [LogLevel.WARN]: '⚠️',
-        [LogLevel.ERROR]: '❌',
-        [LogLevel.FATAL]: '💀',
-      }
-
-      const emoji = levelEmoji[entry.log.level] || '📝'
-      const timestamp = entry['@timestamp']
-      const service = entry.service?.name || 'unknown'
-      const message = entry.message
-
-      console.log(`${emoji} [${timestamp}] ${service} ${entry.log.level.toUpperCase()}: ${message}`)
-
-      // Log additional context in development
-      if (this.config.environment === 'development' && Object.keys(entry).length > 3) {
-        console.log('  Context:', JSON.stringify(entry, null, 2))
+    for (const [key, value] of Object.entries(query)) {
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          params.append(key, item)
+        }
+      } else if (typeof value === 'string') {
+        params.append(key, value)
       }
     }
+
+    const serialized = params.toString()
+    return serialized.length > 0 ? serialized : undefined
+  }
+
+  private normalizeError(error: unknown): ErrorWithCode {
+    if (error instanceof Error) {
+      return error as ErrorWithCode
+    }
+
+    return new Error(String(error))
   }
 
   // Public logging methods
   trace(message: string, data?: Partial<ECSLogEntry>): void {
-    this.log(LogLevel.TRACE, message, data)
+    this.logger.trace(data ?? {}, message)
   }
 
   debug(message: string, data?: Partial<ECSLogEntry>): void {
-    this.log(LogLevel.DEBUG, message, data)
+    this.logger.debug(data ?? {}, message)
   }
 
   info(message: string, data?: Partial<ECSLogEntry>): void {
-    this.log(LogLevel.INFO, message, data)
+    this.logger.info(data ?? {}, message)
   }
 
   warn(message: string, data?: Partial<ECSLogEntry>): void {
-    this.log(LogLevel.WARN, message, data)
+    this.logger.warn(data ?? {}, message)
   }
 
-  error(message: string, error?: Error | any, data?: Partial<ECSLogEntry>): void {
+  error(message: string, error?: unknown, data?: Partial<ECSLogEntry>): void {
     const errorData: Partial<ECSLogEntry> = {
       ...data,
       event: {
@@ -302,18 +306,20 @@ export class ECSLogger {
     }
 
     if (error) {
+      const normalizedError = this.normalizeError(error)
+
       errorData.error = {
-        type: error.constructor?.name || 'Error',
-        message: error.message,
-        code: error.code,
-        stack_trace: this.config.includeStackTrace ? error.stack : undefined,
+        type: normalizedError.name,
+        message: normalizedError.message,
+        code: normalizedError.code,
+        stack_trace: this.config.includeStackTrace ? normalizedError.stack : undefined,
       }
     }
 
-    this.log(LogLevel.ERROR, message, errorData)
+    this.logger.error(errorData, message)
   }
 
-  fatal(message: string, error?: Error | any, data?: Partial<ECSLogEntry>): void {
+  fatal(message: string, error?: unknown, data?: Partial<ECSLogEntry>): void {
     const errorData: Partial<ECSLogEntry> = {
       ...data,
       event: {
@@ -323,20 +329,24 @@ export class ECSLogger {
     }
 
     if (error) {
+      const normalizedError = this.normalizeError(error)
+
       errorData.error = {
-        type: error.constructor?.name || 'Error',
-        message: error.message,
-        code: error.code,
-        stack_trace: this.config.includeStackTrace ? error.stack : undefined,
+        type: normalizedError.name,
+        message: normalizedError.message,
+        code: normalizedError.code,
+        stack_trace: this.config.includeStackTrace ? normalizedError.stack : undefined,
       }
     }
 
-    this.log(LogLevel.FATAL, message, errorData)
+    this.logger.fatal(errorData, message)
   }
 
   // HTTP-specific logging methods
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   logRequest(req: any, res: any, next: any): void {
     const startTime = Date.now()
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const logger = this.setRequestContext(req)
 
     logger.info('Request received', {
@@ -348,26 +358,35 @@ export class ECSLogger {
     })
 
     // Log response when finished
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     res.on('finish', () => {
       const duration = Date.now() - startTime
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const level = res.statusCode >= 400 ? LogLevel.WARN : LogLevel.INFO
 
-      logger.log(level, 'Request completed', {
+      // Use the appropriate log method based on level
+      const logMethod =
+        level === LogLevel.WARN ? logger.warn.bind(logger) : logger.info.bind(logger)
+
+      logMethod('Request completed', {
         event: {
           action: 'response',
           category: 'web',
           type: 'access',
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           outcome: res.statusCode >= 400 ? 'failure' : 'success',
           duration,
         },
         http: {
           response: {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
             status_code: res.statusCode,
           },
         },
       })
     })
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     next()
   }
 
@@ -398,13 +417,14 @@ export function createLogger(config: LoggerConfig): ECSLogger {
 // Default logger instance (can be configured per service)
 export const logger = createLogger({
   serviceName: 'blich-studio',
-  environment: process.env.NODE_ENV || 'development',
-  level: (process.env.LOG_LEVEL as LogLevel) || LogLevel.INFO,
+  environment: process.env.NODE_ENV,
+  level: process.env.LOG_LEVEL as LogLevel,
 })
 
 // Concise logging helpers for common patterns
 export const log = {
   // Error with minimal context
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   error: (message: string, error?: any, context?: Record<string, any>) => {
     logger.error(message, error, context)
   },
@@ -418,6 +438,7 @@ export const log = {
   },
 
   // Database operation error
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: (operation: string, error: any, id?: string) => {
     logger.error(`DB ${operation} failed`, error, {
       event: { action: operation, category: 'database', outcome: 'failure' },
@@ -434,6 +455,7 @@ export const log = {
   },
 
   // Success operation
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   success: (operation: string, id?: string, extra?: Record<string, any>) => {
     logger.info(`${operation} successful`, {
       event: { action: operation, category: 'operation', outcome: 'success' },
