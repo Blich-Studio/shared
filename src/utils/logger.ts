@@ -14,12 +14,12 @@ export enum LogLevel {
 // ECS Base Log Entry Interface
 export interface ECSLogEntry {
   // ECS Core Fields
-  '@timestamp'?: string
+  '@timestamp': string
   log?: {
     level: LogLevel
     logger?: string
   }
-  message?: string
+  message: string
 
   // ECS Event Fields
   event?: {
@@ -150,10 +150,16 @@ export class ECSLogger {
         level: label => {
           return { log: { level: label as LogLevel } }
         },
-        bindings: (bindings: Record<string, unknown>) => {
+        bindings: (bindings: pino.Bindings) => {
+          const processInfo =
+            typeof bindings.pid === 'number' ? { process: { pid: bindings.pid } } : {}
+
+          const hostInfo =
+            typeof bindings.hostname === 'string' ? { host: { hostname: bindings.hostname } } : {}
+
           return {
-            process: { pid: bindings.pid as number },
-            host: { hostname: bindings.hostname as string },
+            ...processInfo,
+            ...hostInfo,
           }
         },
       },
@@ -207,9 +213,7 @@ export class ECSLogger {
       url: {
         original: req.originalUrl ?? req.url,
         path: req.path,
-        query: req.query
-          ? new URLSearchParams(req.query as Record<string, string>).toString()
-          : undefined,
+        query: this.serializeQueryParams(req.query),
       },
       user: req.user
         ? {
@@ -241,6 +245,27 @@ export class ECSLogger {
     }
 
     return sanitized
+  }
+
+  private serializeQueryParams(query?: Record<string, string | string[]>): string | undefined {
+    if (!query) {
+      return undefined
+    }
+
+    const params = new URLSearchParams()
+
+    for (const [key, value] of Object.entries(query)) {
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          params.append(key, item)
+        }
+      } else if (typeof value === 'string') {
+        params.append(key, value)
+      }
+    }
+
+    const serialized = params.toString()
+    return serialized.length > 0 ? serialized : undefined
   }
 
   // Public logging methods
