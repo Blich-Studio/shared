@@ -105,14 +105,16 @@ export interface LoggerConfig {
   includeStackTrace?: boolean
 }
 
+const inferredEnvironment = process.env.NODE_ENV ?? 'development'
+
 // Default configuration
 const defaultConfig: Required<LoggerConfig> = {
   serviceName: 'unknown-service',
   serviceVersion: '1.0.0',
-  environment: 'development',
+  environment: inferredEnvironment,
   level: LogLevel.INFO,
   enableConsole: true,
-  enableJSON: true,
+  enableJSON: inferredEnvironment !== 'development',
   includeStackTrace: true,
 }
 
@@ -163,6 +165,7 @@ export class ECSLogger {
           }
         },
       },
+      // Pretty transport stays dev-only to avoid main-thread overhead in production
       transport:
         this.config.environment === 'development' && !this.config.enableJSON
           ? {
