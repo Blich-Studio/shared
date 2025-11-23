@@ -15,7 +15,7 @@ export enum LogLevel {
 export interface ECSLogEntry {
   // ECS Core Fields
   '@timestamp': string
-  log?: {
+  log: {
     level: LogLevel
     logger?: string
   }
@@ -268,6 +268,14 @@ export class ECSLogger {
     return serialized.length > 0 ? serialized : undefined
   }
 
+  private normalizeError(error: unknown): ErrorWithCode {
+    if (error instanceof Error) {
+      return error as ErrorWithCode
+    }
+
+    return new Error(String(error))
+  }
+
   // Public logging methods
   trace(message: string, data?: Partial<ECSLogEntry>): void {
     this.logger.trace(data ?? {}, message)
@@ -295,19 +303,13 @@ export class ECSLogger {
     }
 
     if (error) {
-      let err: ErrorWithCode
-      if (error instanceof Error) {
-        err = error as ErrorWithCode
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-base-to-string
-        err = new Error(String(error))
-      }
+      const normalizedError = this.normalizeError(error)
 
       errorData.error = {
-        type: err.name,
-        message: err.message,
-        code: err.code,
-        stack_trace: this.config.includeStackTrace ? err.stack : undefined,
+        type: normalizedError.name,
+        message: normalizedError.message,
+        code: normalizedError.code,
+        stack_trace: this.config.includeStackTrace ? normalizedError.stack : undefined,
       }
     }
 
@@ -324,19 +326,13 @@ export class ECSLogger {
     }
 
     if (error) {
-      let err: ErrorWithCode
-      if (error instanceof Error) {
-        err = error as ErrorWithCode
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-base-to-string
-        err = new Error(String(error))
-      }
+      const normalizedError = this.normalizeError(error)
 
       errorData.error = {
-        type: err.name,
-        message: err.message,
-        code: err.code,
-        stack_trace: this.config.includeStackTrace ? err.stack : undefined,
+        type: normalizedError.name,
+        message: normalizedError.message,
+        code: normalizedError.code,
+        stack_trace: this.config.includeStackTrace ? normalizedError.stack : undefined,
       }
     }
 
