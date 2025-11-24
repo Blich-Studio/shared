@@ -35,14 +35,12 @@ export const ArticlePaginationSchema = z.object({
   page: z.preprocess(val => {
     if (!val || typeof val !== 'string') return undefined
     const parsed = parseInt(val, 10)
-    if (isNaN(parsed)) throw new Error('Invalid page number')
-    return parsed
+    return Number.isNaN(parsed) ? val : parsed
   }, z.number().optional()),
   limit: z.preprocess(val => {
     if (!val || typeof val !== 'string') return undefined
     const parsed = parseInt(val, 10)
-    if (isNaN(parsed)) throw new Error('Invalid limit number')
-    return parsed
+    return Number.isNaN(parsed) ? val : parsed
   }, z.number().optional()),
   sort: z.string().optional(),
   order: z.enum(['asc', 'desc']).optional().default('desc'),

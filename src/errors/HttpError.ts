@@ -25,7 +25,10 @@ export class HttpError extends Error {
  * throw new ValidationError('Invalid email format')
  */
 export class ValidationError extends HttpError {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly field?: string
+  ) {
     super(message, 400)
     this.name = 'ValidationError'
     Object.setPrototypeOf(this, ValidationError.prototype)
@@ -37,10 +40,21 @@ export class ValidationError extends HttpError {
  * Extends HttpError with a 404 status code
  *
  * @example
- * throw new NotFoundError('Article not found')
+ * throw new NotFoundError('Article')
+ * throw new NotFoundError('Article', { detail: '507f1f77bcf86cd799439011' })
  */
 export class NotFoundError extends HttpError {
-  constructor(message: string) {
+  constructor(
+    resource: string,
+    options?: {
+      message?: string
+      detail?: string
+    }
+  ) {
+    const detailSuffix = options?.detail ? `: ${options.detail}` : ''
+    const hasNotFoundSuffix = resource.toLowerCase().includes('not found')
+    const fallbackMessage = `${hasNotFoundSuffix ? resource : `${resource} not found`}${detailSuffix}`
+    const message = options?.message ?? fallbackMessage
     super(message, 404)
     this.name = 'NotFoundError'
     Object.setPrototypeOf(this, NotFoundError.prototype)

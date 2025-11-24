@@ -36,8 +36,13 @@ export interface BlogPost {
 
 // Export utilities and types
 export * from './errors/HttpError'
+export * from './errors/MissingEnvironmentVariableError'
 export * from './types/article'
+export * from './types/comment'
 export * from './types/common'
+export * from './types/like'
+export * from './types/tag'
+export * from './types/user'
 export * from './utils/date'
 export * from './utils/logger'
 export * from './utils/logger-examples'

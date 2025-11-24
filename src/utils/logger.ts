@@ -118,6 +118,12 @@ const defaultConfig: Required<LoggerConfig> = {
   includeStackTrace: true,
 }
 
+const sanitizeConfig = (config: LoggerConfig): Partial<LoggerConfig> => {
+  return Object.fromEntries(
+    Object.entries(config).filter(([, value]) => value !== undefined)
+  ) as Partial<LoggerConfig>
+}
+
 interface ErrorWithCode extends Error {
   code?: string
 }
@@ -130,7 +136,7 @@ export class ECSLogger {
   private config: Required<LoggerConfig>
 
   constructor(config: LoggerConfig) {
-    this.config = { ...defaultConfig, ...config }
+    this.config = { ...defaultConfig, ...sanitizeConfig(config) }
 
     this.logger = pino({
       level: this.config.level,
