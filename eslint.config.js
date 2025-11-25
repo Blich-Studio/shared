@@ -1,6 +1,6 @@
-const { base } = require('@blich-studio/eslint-config')
+const { defineSharedConfig } = require('@blich-studio/eslint-config')
 
-module.exports = base({
+module.exports = defineSharedConfig({
   languageOptions: {
     parserOptions: {
       project: './tsconfig.json',
