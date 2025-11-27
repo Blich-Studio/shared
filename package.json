@@ -1,7 +1,7 @@
 {
   "name": "@blich-studio/shared",
   "version": "0.0.0",
-  "description": "Shared utilities and types for Blich Studio monorepo",
+  "description": "Shared utilities, types, and error classes for Blich Studio projects",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
