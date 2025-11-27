@@ -1,6 +1,6 @@
 {
   "name": "@blich-studio/shared",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "Shared utilities and types for Blich Studio monorepo",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,7 +8,8 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "prepare": "husky"
   },
   "keywords": [
     "shared",
@@ -17,11 +18,26 @@
     "blich-studio"
   ],
   "author": "Blich Studio",
-  "license": "ISC",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Blich-Studio/shared.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "type": "commonjs",
   "devDependencies": {
-    "@blich-studio/eslint-config": "file:../eslint-config",
+    "@blich-studio/eslint-config": "1.3.0",
+    "@commitlint/cli": "20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/github": "^12.0.2",
+    "@semantic-release/npm": "^13.1.2",
     "@types/node": "^24.10.0",
+    "conventional-changelog-cli": "^5.0.0",
+    "husky": "9.1.7",
+    "semantic-release": "25.0.2",
     "typescript": "^5.8.3"
   },
   "files": [
