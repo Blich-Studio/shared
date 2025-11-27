@@ -44,6 +44,17 @@ jobs:
       - name: Build
         run: bun run build
       
+      - name: Debug token availability
+        run: |
+          if [ -z "${{ secrets.GH_PAT }}" ]; then
+            echo "ERROR: GH_PAT secret is not available"
+            exit 1
+          else
+            echo "GH_PAT secret is available (length: ${#GH_PAT})"
+          fi
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+      
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
