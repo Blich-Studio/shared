@@ -32,6 +32,8 @@ jobs:
           bun-version: latest
       
       - name: Install dependencies
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bun install
       
       - name: Lint
