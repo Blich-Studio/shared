@@ -31,7 +31,7 @@ jobs:
       
       - name: Install dependencies
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bun install
       
       - name: Lint
