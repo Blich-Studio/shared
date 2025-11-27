@@ -1,6 +1,6 @@
 # @blich-studio/shared
 
-Shared utilities, types, and error classes for Blich Studio projects.
+Shared utilities, types, and error classes for Blich Studio projects. This package provides a comprehensive set of tools for building consistent and maintainable applications.
 
 ## Installation
 
