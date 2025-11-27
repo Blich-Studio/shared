@@ -1,7 +1,10 @@
 import { randomUUID } from 'crypto'
 import pino from 'pino'
 
-// ECS (Elastic Common Schema) Log Levels
+/**
+ * ECS (Elastic Common Schema) Log Levels
+ * Defines the severity levels for logging
+ */
 export enum LogLevel {
   TRACE = 'trace',
   DEBUG = 'debug',
@@ -11,7 +14,10 @@ export enum LogLevel {
   FATAL = 'fatal',
 }
 
-// ECS Base Log Entry Interface
+/**
+ * ECS Base Log Entry Interface
+ * Defines the structure of a log entry following Elastic Common Schema
+ */
 export interface ECSLogEntry {
   // ECS Core Fields
   '@timestamp': string
@@ -94,7 +100,10 @@ export interface ECSLogEntry {
   meta?: Record<string, unknown>
 }
 
-// Logger Configuration
+/**
+ * Logger Configuration
+ * Configuration options for creating a new logger instance
+ */
 export interface LoggerConfig {
   serviceName: string
   serviceVersion?: string
@@ -188,6 +197,8 @@ export class ECSLogger {
 
   /**
    * Create a child logger with additional context
+   * @param context - Additional context to include in all child logger entries
+   * @returns A new ECSLogger instance with inherited context
    */
   child(context: Partial<ECSLogEntry>): ECSLogger {
     const childLogger = new ECSLogger(this.config)
@@ -197,6 +208,8 @@ export class ECSLogger {
 
   /**
    * Set request context for HTTP logging
+   * @param req - HTTP request object containing method, URL, headers, etc.
+   * @returns A new ECSLogger instance with request context
    */
   setRequestContext(req: {
     method: string
@@ -285,23 +298,48 @@ export class ECSLogger {
     return new Error(String(error))
   }
 
-  // Public logging methods
+  /**
+   * Log a trace level message
+   * @param message - The log message
+   * @param data - Additional ECS fields to include
+   */
   trace(message: string, data?: Partial<ECSLogEntry>): void {
     this.logger.trace(data ?? {}, message)
   }
 
+  /**
+   * Log a debug level message
+   * @param message - The log message
+   * @param data - Additional ECS fields to include
+   */
   debug(message: string, data?: Partial<ECSLogEntry>): void {
     this.logger.debug(data ?? {}, message)
   }
 
+  /**
+   * Log an info level message
+   * @param message - The log message
+   * @param data - Additional ECS fields to include
+   */
   info(message: string, data?: Partial<ECSLogEntry>): void {
     this.logger.info(data ?? {}, message)
   }
 
+  /**
+   * Log a warning level message
+   * @param message - The log message
+   * @param data - Additional ECS fields to include
+   */
   warn(message: string, data?: Partial<ECSLogEntry>): void {
     this.logger.warn(data ?? {}, message)
   }
 
+  /**
+   * Log an error level message
+   * @param message - The log message
+   * @param error - Optional error object to log
+   * @param data - Additional ECS fields to include
+   */
   error(message: string, error?: unknown, data?: Partial<ECSLogEntry>): void {
     const errorData: Partial<ECSLogEntry> = {
       ...data,
@@ -325,6 +363,12 @@ export class ECSLogger {
     this.logger.error(errorData, message)
   }
 
+  /**
+   * Log a fatal level message
+   * @param message - The log message
+   * @param error - Optional error object to log
+   * @param data - Additional ECS fields to include
+   */
   fatal(message: string, error?: unknown, data?: Partial<ECSLogEntry>): void {
     const errorData: Partial<ECSLogEntry> = {
       ...data,
@@ -348,7 +392,13 @@ export class ECSLogger {
     this.logger.fatal(errorData, message)
   }
 
-  // HTTP-specific logging methods
+  /**
+   * Log HTTP request and response
+   * Middleware function to automatically log incoming requests and their responses
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param next - Express next function
+   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   logRequest(req: any, res: any, next: any): void {
     const startTime = Date.now()
@@ -396,7 +446,11 @@ export class ECSLogger {
     next()
   }
 
-  // Performance logging
+  /**
+   * Create a timer for performance logging
+   * @param label - Label for the timer
+   * @returns A function to end the timer and log the duration
+   */
   time(label: string): () => void {
     const startTime = Date.now()
     this.debug(`Timer started: ${label}`)
@@ -415,27 +469,45 @@ export class ECSLogger {
   }
 }
 
-// Factory function to create logger instances
+/**
+ * Factory function to create logger instances
+ * @param config - Logger configuration options
+ * @returns A new ECSLogger instance
+ */
 export function createLogger(config: LoggerConfig): ECSLogger {
   return new ECSLogger(config)
 }
 
-// Default logger instance (can be configured per service)
+/**
+ * Default logger instance (can be configured per service)
+ */
 export const logger = createLogger({
   serviceName: 'blich-studio',
   environment: process.env.NODE_ENV,
   level: process.env.LOG_LEVEL as LogLevel,
 })
 
-// Concise logging helpers for common patterns
+/**
+ * Concise logging helpers for common patterns
+ * Provides shorthand methods for frequently used logging scenarios
+ */
 export const log = {
-  // Error with minimal context
+  /**
+   * Log an error with minimal context
+   * @param message - Error message
+   * @param error - Error object
+   * @param context - Additional context
+   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   error: (message: string, error?: any, context?: Record<string, any>) => {
     logger.error(message, error, context)
   },
 
-  // Validation error
+  /**
+   * Log a validation error
+   * @param message - Validation error message
+   * @param id - Optional identifier
+   */
   validation: (message: string, id?: string) => {
     logger.error(message, undefined, {
       event: { action: 'validation', category: 'validation', outcome: 'failure' },
@@ -443,7 +515,12 @@ export const log = {
     })
   },
 
-  // Database operation error
+  /**
+   * Log a database operation error
+   * @param operation - Database operation name
+   * @param error - Error object
+   * @param id - Optional record identifier
+   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: (operation: string, error: any, id?: string) => {
     logger.error(`DB ${operation} failed`, error, {
@@ -452,7 +529,11 @@ export const log = {
     })
   },
 
-  // Not found error
+  /**
+   * Log a resource not found error
+   * @param resource - Resource type that was not found
+   * @param id - Optional resource identifier
+   */
   notFound: (resource: string, id?: string) => {
     logger.error(`${resource} not found`, undefined, {
       event: { action: 'find', category: 'not_found', outcome: 'failure' },
@@ -460,7 +541,12 @@ export const log = {
     })
   },
 
-  // Success operation
+  /**
+   * Log a successful operation
+   * @param operation - Operation name
+   * @param id - Optional resource identifier
+   * @param extra - Additional fields to include
+   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   success: (operation: string, id?: string, extra?: Record<string, any>) => {
     logger.info(`${operation} successful`, {
